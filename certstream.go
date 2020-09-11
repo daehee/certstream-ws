@@ -3,11 +3,13 @@ package certstream
 import (
     "context"
     "io"
+    "strconv"
     "sync"
     "time"
 
     "github.com/gobwas/ws"
     "github.com/gobwas/ws/wsutil"
+    "github.com/paulbellamy/ratecounter"
     "github.com/pkg/errors"
     "github.com/valyala/fastjson"
     "go.uber.org/ratelimit"
@@ -35,17 +37,18 @@ func CertStreamEventStream(rpsLimit int) (chan *fastjson.Value, chan error) {
 
     // rate limit the read requests to certstream server
     rl := ratelimit.New(rpsLimit)
-    // prev := time.Now()
+
 
     go func() {
         for {
             cl, err := newClient()
+
             if err != nil {
                 errStream <- errors.Wrap(err, "error connecting to certstream, sleeping a few seconds and reconnecting...")
                 time.Sleep(5 * time.Second)
                 continue
             }
-            // sugar.Info("connected to certstream")
+            sugar.Info("connected to certstream")
 
             done := make(chan struct{})
             go cl.startPing(done)
@@ -53,8 +56,6 @@ func CertStreamEventStream(rpsLimit int) (chan *fastjson.Value, chan error) {
             loop:
             for {
                 _ = rl.Take()
-                // sugar.Info(now.Sub(prev))
-                // prev = now
 
                 messages, err := cl.receive()
                 if err != nil {
@@ -64,22 +65,24 @@ func CertStreamEventStream(rpsLimit int) (chan *fastjson.Value, chan error) {
                 if len(messages) == 0 {
                     continue
                 }
+
                 for _, msg := range messages {
                     switch msg.OpCode {
                     case ws.OpText:
                         v, err := p.Parse(string(msg.Payload))
                         if err != nil {
-                            errStream <- err
+                            break
                         }
                         if string(v.GetStringBytes("message_type")) == "certificate_update" {
                             outputStream <- v
                         }
                     case ws.OpPong:
-                        // sugar.Info("pong")
+                        sugar.Info("pong")
                     default:
                     }
                 }
             }
+
 
             close(done)
             cl.conn.Close()
@@ -92,6 +95,7 @@ func CertStreamEventStream(rpsLimit int) (chan *fastjson.Value, chan error) {
 type client struct {
     io sync.Mutex
     conn io.ReadWriteCloser
+    rc *ratecounter.RateCounter
 }
 
 func newClient() (*client, error) {
@@ -100,8 +104,10 @@ func newClient() (*client, error) {
     if err != nil {
         return nil, err
     }
+    rc := ratecounter.NewRateCounter(1 * time.Second)
     cl := &client{
         conn: conn,
+        rc: rc,
     }
 
     return cl, nil
@@ -115,6 +121,9 @@ func (cl *client) receive() ([]wsutil.Message, error) {
     if err != nil {
         return nil, err
     }
+
+    cl.rc.Incr(1)
+
     return messages, nil
 }
 
@@ -131,7 +140,9 @@ func (cl *client) startPing(done <-chan struct{}) {
                 ticker.Reset(pingPeriod)
                 break
             }
-            // sugar.Info("ping")
+            sugar.Info("ping")
+            cr := cl.rc.Rate()
+            sugar.Infof("requests per second: %s", strconv.FormatInt(cr, 10))
         case <-done:
             return
         }
