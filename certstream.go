@@ -21,8 +21,6 @@ const (
 const (
     // Send pings to certstream server with this period to keep conn alive
     pingPeriod = 15 * time.Second
-    // requests per second limit to certstream sever
-    rpsLimit = 1
 )
 
 var (
@@ -31,7 +29,7 @@ var (
     sugar = logger.Sugar()
 )
 
-func CertStreamEventStream() (chan *fastjson.Value, chan error) {
+func CertStreamEventStream(rpsLimit int) (chan *fastjson.Value, chan error) {
     outputStream := make(chan *fastjson.Value)
     errStream := make(chan error)
 
