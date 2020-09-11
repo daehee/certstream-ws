@@ -11,6 +11,7 @@ import (
     "github.com/pkg/errors"
     "github.com/valyala/fastjson"
     "go.uber.org/zap"
+    "go.uber.org/ratelimit"
 )
 
 const (
@@ -20,6 +21,8 @@ const (
 const (
     // Send pings to certstream server with this period to keep conn alive
     pingPeriod = 15 * time.Second
+    // requests per second limit to certstream sever
+    rpsLimit = 1
 )
 
 var (
@@ -31,6 +34,10 @@ var (
 func CertStreamEventStream() (chan *fastjson.Value, chan error) {
     outputStream := make(chan *fastjson.Value)
     errStream := make(chan error)
+
+    // rate limit the read requests to certstream server
+    rl := ratelimit.New(rpsLimit)
+    // prev := time.Now()
 
     go func() {
         for {
@@ -47,6 +54,10 @@ func CertStreamEventStream() (chan *fastjson.Value, chan error) {
 
             loop:
             for {
+                _ = rl.Take()
+                // sugar.Info(now.Sub(prev))
+                // prev = now
+
                 messages, err := cl.receive()
                 if err != nil {
                     switch err {

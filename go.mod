@@ -8,6 +8,7 @@ require (
 	github.com/gobwas/ws v1.0.4
 	github.com/pkg/errors v0.8.1
 	github.com/valyala/fastjson v1.5.4
+	go.uber.org/ratelimit v0.1.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/sys v0.0.0-20200909081042-eff7692f9009 // indirect
 )
