@@ -58,14 +58,8 @@ func CertStreamEventStream(rpsLimit int) (chan *fastjson.Value, chan error) {
 
                 messages, err := cl.receive()
                 if err != nil {
-                    switch err {
-                    case io.ErrUnexpectedEOF:
-                        // silent reconnect on EOF from certstream server
-                        break loop
-                    default:
-                        errStream <- err
-                        break loop
-                    }
+                    errStream <- err
+                    break loop
                 }
                 if len(messages) == 0 {
                     continue
