@@ -10,8 +10,8 @@ import (
     "github.com/gobwas/ws/wsutil"
     "github.com/pkg/errors"
     "github.com/valyala/fastjson"
-    "go.uber.org/zap"
     "go.uber.org/ratelimit"
+    "go.uber.org/zap"
 )
 
 const (
