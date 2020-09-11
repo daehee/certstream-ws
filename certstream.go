@@ -47,7 +47,7 @@ func CertStreamEventStream() (chan *fastjson.Value, chan error) {
                 time.Sleep(5 * time.Second)
                 continue
             }
-            sugar.Info("connected to certstream")
+            // sugar.Info("connected to certstream")
 
             done := make(chan struct{})
             go cl.startPing(done)
@@ -72,7 +72,6 @@ func CertStreamEventStream() (chan *fastjson.Value, chan error) {
                 if len(messages) == 0 {
                     continue
                 }
-                // var v *fastjson.Value
                 for _, msg := range messages {
                     switch msg.OpCode {
                     case ws.OpText:
@@ -84,7 +83,7 @@ func CertStreamEventStream() (chan *fastjson.Value, chan error) {
                             outputStream <- v
                         }
                     case ws.OpPong:
-                        sugar.Info("pong")
+                        // sugar.Info("pong")
                     default:
                     }
                 }
@@ -140,7 +139,7 @@ func (cl *client) startPing(done <-chan struct{}) {
                 ticker.Reset(pingPeriod)
                 break
             }
-            sugar.Info("ping")
+            // sugar.Info("ping")
         case <-done:
             return
         }
