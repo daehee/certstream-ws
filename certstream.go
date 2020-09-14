@@ -30,20 +30,22 @@ var (
     sugar = logger.Sugar()
 )
 
-func CertStreamEventStream() (chan *fastjson.Value, chan error) {
+func CertStreamEventStream(debug bool) (chan *fastjson.Value, chan error) {
     outputStream := make(chan *fastjson.Value)
     errStream := make(chan error)
 
     go func() {
         for {
-            cl, err := newClient()
+            cl, err := newClient(debug)
 
             if err != nil {
                 errStream <- errors.Wrap(err, "error connecting to certstream, sleeping a few seconds and reconnecting...")
                 time.Sleep(5 * time.Second)
                 continue
             }
-            sugar.Info("connected to certstream")
+            if debug {
+                sugar.Info("connected to certstream")
+            }
 
             done := make(chan struct{})
             go cl.startPing(done)
@@ -70,7 +72,9 @@ func CertStreamEventStream() (chan *fastjson.Value, chan error) {
                             outputStream <- v
                         }
                     case ws.OpPong:
-                        sugar.Info("pong")
+                        if debug {
+                            sugar.Info("pong")
+                        }
                     default:
                     }
                 }
@@ -87,11 +91,13 @@ func CertStreamEventStream() (chan *fastjson.Value, chan error) {
 
 type client struct {
     io sync.Mutex
+
     conn io.ReadWriteCloser
     rc *ratecounter.RateCounter
+    debug bool
 }
 
-func newClient() (*client, error) {
+func newClient(debug bool) (*client, error) {
     ctx := context.Background()
     conn, _, _, err := ws.Dial(ctx, addr)
     if err != nil {
@@ -101,6 +107,7 @@ func newClient() (*client, error) {
     cl := &client{
         conn: conn,
         rc: rc,
+        debug: debug,
     }
 
     return cl, nil
@@ -133,9 +140,11 @@ func (cl *client) startPing(done <-chan struct{}) {
                 ticker.Reset(pingPeriod)
                 break
             }
-            sugar.Info("ping")
-            cr := cl.rc.Rate()
-            sugar.Infof("requests per second: %s", strconv.FormatInt(cr, 10))
+            if cl.debug {
+                sugar.Info("ping")
+                cr := cl.rc.Rate()
+                sugar.Infof("requests per second: %s", strconv.FormatInt(cr, 10))
+            }
         case <-done:
             return
         }
