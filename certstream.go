@@ -12,7 +12,6 @@ import (
     "github.com/paulbellamy/ratecounter"
     "github.com/pkg/errors"
     "github.com/valyala/fastjson"
-    "go.uber.org/ratelimit"
     "go.uber.org/zap"
 )
 
@@ -31,13 +30,9 @@ var (
     sugar = logger.Sugar()
 )
 
-func CertStreamEventStream(rpsLimit int) (chan *fastjson.Value, chan error) {
+func CertStreamEventStream() (chan *fastjson.Value, chan error) {
     outputStream := make(chan *fastjson.Value)
     errStream := make(chan error)
-
-    // rate limit the read requests to certstream server
-    rl := ratelimit.New(rpsLimit)
-
 
     go func() {
         for {
@@ -55,8 +50,6 @@ func CertStreamEventStream(rpsLimit int) (chan *fastjson.Value, chan error) {
 
             loop:
             for {
-                _ = rl.Take()
-
                 messages, err := cl.receive()
                 if err != nil {
                     errStream <- err
