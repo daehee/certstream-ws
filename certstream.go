@@ -141,9 +141,8 @@ func (cl *client) startPing(done <-chan struct{}) {
                 break
             }
             if cl.debug {
-                sugar.Info("ping")
                 cr := cl.rc.Rate()
-                sugar.Infof("requests per second: %s", strconv.FormatInt(cr, 10))
+                sugar.Infof("ping @ %s req/s", strconv.FormatInt(cr, 10))
             }
         case <-done:
             return
