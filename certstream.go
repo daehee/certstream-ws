@@ -54,7 +54,9 @@ func CertStreamEventStream(debug bool) (chan *fastjson.Value, chan error) {
             for {
                 messages, err := cl.receive()
                 if err != nil {
-                    errStream <- err
+                    if debug {
+                        errStream <- err
+                    }
                     break loop
                 }
                 if len(messages) == 0 {
